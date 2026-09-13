@@ -94,7 +94,7 @@ def main():
         "retrieved_at": snapshot["retrieved_at"],
         "term_count": len(terms),
         "category_counts": dict(sorted(Counter(term["category"] for term in terms).items())),
-        "sources": [snapshot["source"], {"name": "FlowKit curated additions", "license": "MIT", "url": "sources/curated-titles.json"}],
+        "sources": [snapshot["source"], {"name": "FlowKit curated additions", "version": "1", "license": "MIT", "url": "sources/curated-titles.json"}],
     }
     manifest_bytes = compact(manifest)
     (args.output_dir / artifact_name).write_bytes(artifact)

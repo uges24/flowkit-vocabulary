@@ -105,7 +105,7 @@ def main():
         "schema_version": 1,
         "retrieved_at": args.retrieved,
         "catalog_sha256": hashlib.sha256(catalog_bytes).hexdigest(),
-        "source": {"name": "Wikidata structured data", "license": "CC0-1.0", "url": WIKIDATA_API},
+        "source": {"name": "Wikidata structured data", "version": args.retrieved, "license": "CC0-1.0", "url": WIKIDATA_API},
         "request_budget": {"titles": len(titles), "http_requests_max": 12, "response_bytes_each_max": 4_000_000},
         "entities": entities,
     }
