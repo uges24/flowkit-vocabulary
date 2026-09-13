@@ -34,12 +34,36 @@ COMMON_AMBIGUOUS = {
     "dart", "edge", "flow", "go", "linear", "notion", "oracle", "power", "react",
     "rust", "signal", "spark", "swift", "teams", "warp", "windsurf", "zoom",
 }
+UNSAFE_CANONICAL_FORMS = {"goto", "visual basic 6"}
 HASHISH = re.compile(r"^(?:[0-9a-f]{12,}|[a-z0-9_-]*[0-9a-f]{20,}[a-z0-9_-]*)$", re.I)
 DISALLOWED_PREFIXES = ("template:", "category:", "list of ", "draft:", "portal:", "user:")
+CORPORATE_SUFFIXES = {"inc", "incorporated", "corp", "corporation", "company", "ltd", "limited", "llc", "plc", "ag"}
 
 
 def compact(value):
     return (json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n").encode()
+
+
+def runtime_normalized(value):
+    return " ".join("".join(ch.lower() if ch.isalnum() else " " for ch in value).split())
+
+
+def runtime_acceptable(value):
+    normalized = runtime_normalized(value.strip())
+    compact = normalized.replace(" ", "")
+    digits = sum(ch.isascii() and ch.isdigit() for ch in compact)
+    secret_compact = "".join(ch for ch in value if ch.isalnum())
+    secret_classes = sum((
+        any(ch.isascii() and ch.islower() for ch in secret_compact),
+        any(ch.isascii() and ch.isupper() for ch in secret_compact),
+        any(ch.isascii() and ch.isdigit() for ch in secret_compact),
+    ))
+    return (
+        bool(normalized)
+        and normalized not in {"the", "and", "for", "with", "from", "this", "that"}
+        and not (len(compact) >= 20 and digits * 3 > len(compact))
+        and not (len(secret_compact) >= 24 and secret_classes >= 3 and " " not in value)
+    )
 
 
 def safe_name(value):
@@ -50,7 +74,7 @@ def safe_name(value):
         return None
     if value.casefold().startswith(DISALLOWED_PREFIXES):
         return None
-    if not any(ch.isalpha() for ch in value):
+    if not any(ch.isalpha() for ch in value) or not runtime_acceptable(value) or runtime_normalized(value) in UNSAFE_CANONICAL_FORMS:
         return None
     return value
 
@@ -63,6 +87,19 @@ def quality(label, sitelinks):
     score = min(100, 30 + min(60, sitelinks) + (10 if any(ch.isupper() for ch in label[1:]) else 0))
     tier = "core" if sitelinks >= 40 else "extended" if sitelinks >= 10 else "discovered"
     return score, tier, ambiguous
+
+
+def safe_alias(canonical, alias):
+    canonical_words = runtime_normalized(canonical).split()
+    alias_words = runtime_normalized(alias).split()
+    if not alias_words or runtime_normalized(canonical) == runtime_normalized(alias):
+        return True
+    letters = "".join(ch for ch in alias if ch.isascii() and ch.isalpha())
+    if 2 <= len(letters) <= 8 and letters.isupper() and len(alias_words) <= 2:
+        return True
+    if len(canonical_words) == len(alias_words) + 1 and canonical_words[:-1] == alias_words and canonical_words[-1] in CORPORATE_SUFFIXES:
+        return True
+    return False
 
 
 def query_type(qid, limit, cache_dir, attempts=5):
@@ -174,7 +211,7 @@ def main():
     entities = []
     seen_names = set()
     for entity in ranked:
-        normalized = entity["canonical"].casefold()
+        normalized = runtime_normalized(entity["canonical"])
         if normalized in seen_names:
             continue
         seen_names.add(normalized)
@@ -182,6 +219,8 @@ def main():
         if len(entities) == args.limit:
             break
     enrich_core_aliases(entities, args.cache_dir)
+    for entity in entities:
+        entity["aliases"] = [alias for alias in entity["aliases"] if safe_alias(entity["canonical"], alias)]
     snapshot = {
         "schema_version": 2,
         "retrieved_at": args.retrieved,

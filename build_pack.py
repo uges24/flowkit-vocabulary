@@ -25,7 +25,7 @@ def compact(value):
 
 
 def normalized(value):
-    return " ".join(value.casefold().split())
+    return " ".join("".join(ch.lower() if ch.isalnum() else " " for ch in value).split())
 
 
 def valid_text(value):

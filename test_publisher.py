@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-from discover import quality, safe_name
+from discover import quality, runtime_normalized, safe_alias, safe_name
 
 
 ROOT = Path(__file__).parent
@@ -40,8 +40,14 @@ class PublisherTests(unittest.TestCase):
     def test_discovery_rejects_noise_and_downranks_ambiguity(self):
         self.assertIsNone(safe_name("Template:Infobox organization"))
         self.assertIsNone(safe_name("0123456789abcdef0123456789abcdef"))
+        self.assertIsNone(safe_name("GoTo"))
+        self.assertIsNone(safe_name("Visual Basic 6"))
         self.assertIsNone(quality("Linear", 20))
         self.assertEqual(quality("Linear", 40)[1:], ("core", True))
+        self.assertEqual(runtime_normalized("ESPN+"), runtime_normalized("ESPN"))
+        self.assertFalse(safe_alias("Hudson's Bay Company", "The Bay"))
+        self.assertTrue(safe_alias("Vercel Inc.", "Vercel"))
+        self.assertTrue(safe_alias("International Business Machines", "IBM"))
 
     def test_committed_snapshot_is_bounded_and_provenanced(self):
         data = json.loads((ROOT / "sources/wikidata-snapshot.json").read_bytes())
