@@ -1,0 +1,71 @@
+name: Refresh and publish vocabulary
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vocabulary-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Refresh bounded Wikidata snapshot
+        run: python refresh.py
+      - name: Detect meaningful source change
+        id: changed
+        shell: bash
+        run: |
+          if git diff --quiet -- sources/wikidata-snapshot.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build and validate next pack
+        if: steps.changed.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VOCABULARY_SIGNING_KEY: ${{ secrets.VOCABULARY_SIGNING_KEY }}
+        shell: bash
+        run: |
+          current=$(cat CURRENT_VERSION)
+          next=$((current + 1))
+          gh release download "v${current}" --pattern "global-v${current}.json.gz" --dir previous
+          python build_pack.py --snapshot sources/wikidata-snapshot.json --catalog sources/curated-titles.json --version "$next" --previous-pack "previous/global-v${current}.json.gz" --output-dir dist
+          test -s dist/manifest.sig
+          echo "$next" > NEXT_VERSION
+      - name: Show reviewed source changes
+        if: steps.changed.outputs.changed == 'true'
+        run: git diff --stat && git diff -- sources/wikidata-snapshot.json
+      - name: Verify signed release artifacts
+        if: steps.changed.outputs.changed == 'true'
+        run: python -m unittest -v test_publisher.py
+      - name: Publish immutable release
+        if: steps.changed.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          next=$(cat NEXT_VERSION)
+          git diff --exit-code --check
+          gh release create "v${next}" dist/manifest.json dist/manifest.sig "dist/global-v${next}.json.gz" --title "Vocabulary v${next}" --notes "Automated bounded Wikidata refresh. See the committed source snapshot for provenance."
+          printf '%s\n' "$next" > CURRENT_VERSION
+          git config user.name "flowkit-vocabulary-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add CURRENT_VERSION sources/wikidata-snapshot.json
+          git commit -m "data: publish vocabulary v${next}"
+          git push origin HEAD:main

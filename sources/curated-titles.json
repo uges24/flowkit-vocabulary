@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "description": "Bounded FlowKit-maintained allowlist of English Wikipedia titles whose Wikidata entities may enter the public vocabulary.",
+  "categories": {
+    "technology": [
+      "Ada (programming language)", "Ansible (software)", "Apache Cassandra", "Apache CouchDB", "Apache Flink", "Apache Hadoop", "Apache HTTP Server", "Apache Kafka", "Apache Maven", "Apache Spark", "Assembly language", "Bash (Unix shell)", "Bootstrap (front-end framework)", "C (programming language)", "C Sharp (programming language)", "C++", "Clojure", "Cloudflare", "CMake", "COBOL", "Couchbase Server", "CSS", "Dart (programming language)", "Deno (software)", "Django (web framework)", "Docker (software)", "Elasticsearch", "Elixir (programming language)", "Emacs", "Erlang (programming language)", "FastAPI", "Firebase", "Flask (web framework)", "Fortran", "Git", "GitLab", "Go (programming language)", "GraphQL", "Groovy (programming language)", "Haskell", "HTML", "IntelliJ IDEA", "Java (programming language)", "JavaScript", "Jenkins (software)", "Julia (programming language)", "Jupyter", "Kotlin (programming language)", "Kubernetes", "Laravel", "Lua (programming language)", "MariaDB", "Microsoft Azure", "Microsoft SQL Server", "MongoDB", "MySQL", "Nginx", "Node.js", "NumPy", "Objective-C", "OpenGL", "OpenShift", "OpenStack", "Oracle Database", "Pandas (software)", "Perl", "PHP", "PostgreSQL", "PowerShell", "Prometheus (software)", "Python (programming language)", "PyTorch", "R (programming language)", "RabbitMQ", "React (software)", "Redis", "Ruby (programming language)", "Ruby on Rails", "Rust (programming language)", "Scala (programming language)", "SciPy", "SQLite", "Svelte", "Swift (programming language)", "Symfony", "Tailwind CSS", "TensorFlow", "Terraform (software)", "TypeScript", "Vim (text editor)", "Vue.js", "WebAssembly", "Webpack", "Xamarin"
+    ],
+    "product": [
+      "Adobe Acrobat", "Adobe After Effects", "Adobe Illustrator", "Adobe Lightroom", "Adobe Photoshop", "Android Studio", "Asana (software)", "Bitbucket", "Canva", "ChatGPT", "ClickUp", "Confluence (software)", "Cursor (code editor)", "Datadog", "Discord", "Dropbox", "Evernote", "Figma", "Firefox", "GitHub", "Google Chrome", "Google Docs", "Google Drive", "Google Meet", "Grafana", "IntelliJ IDEA", "Jira (software)", "Kibana", "LibreOffice", "Linear (software)", "LinkedIn", "Microsoft Edge", "Microsoft Excel", "Microsoft OneDrive", "Microsoft Outlook", "Microsoft PowerPoint", "Microsoft Teams", "Microsoft Visual Studio", "Microsoft Word", "Monday.com", "Notion (productivity software)", "Obsidian (software)", "Postman (software)", "Reddit", "Replit", "Salesforce", "Signal (software)", "Slack (software)", "Snapchat", "Spotify", "Stack Overflow", "Sublime Text", "Telegram (software)", "Trello", "Twitch (service)", "Visual Studio Code", "WhatsApp", "Windsurf (code editor)", "YouTube", "Zoom (software)"
+    ],
+    "company": [
+      "Adobe Inc.", "Airbnb", "Alibaba Group", "Amazon (company)", "AMD", "Anthropic", "Apple Inc.", "Atlassian", "Canonical (company)", "Cisco", "Cloudflare", "Databricks", "DigitalOcean", "Docker, Inc.", "GitHub", "GitLab Inc.", "Google", "HashiCorp", "Hugging Face", "IBM", "Intel", "Meta Platforms", "Microsoft", "MongoDB Inc.", "Nvidia", "OpenAI", "Oracle Corporation", "Red Hat", "Salesforce", "Samsung Electronics", "Shopify", "Snowflake Inc.", "Stripe, Inc.", "Twilio", "Vercel", "VMware"
+    ]
+  },
+  "flowkit_additions": [
+    {"canonical": "FlowKit", "aliases": ["Flow Kit"], "category": "product", "confidence": 50, "rank": 6500, "source_ref": "flowkit-curated:FlowKit"},
+    {"canonical": "Parakeet", "aliases": [], "category": "technology", "confidence": 45, "rank": 6000, "source_ref": "flowkit-curated:Parakeet-ASR"}
+  ]
+}
