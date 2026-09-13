@@ -7,12 +7,42 @@ import unittest
 from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from discover import quality, safe_name
 
 
 ROOT = Path(__file__).parent
 
 
 class PublisherTests(unittest.TestCase):
+    def test_approved_large_bootstrap_build_is_deterministic(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            subprocess.run([
+                "python", str(ROOT / "build_pack.py"),
+                "--snapshot", str(ROOT / "sources/wikidata-discovered.json"),
+                "--catalog", str(ROOT / "sources/curated-titles.json"),
+                "--version", "4", "--output-dir", str(output),
+            ], check=True, capture_output=True, text=True)
+            manifest = json.loads((output / "manifest.json").read_bytes())
+            approved = (ROOT / "APPROVED_BOOTSTRAP_CONTENT_SHA256").read_text().strip()
+            self.assertEqual(manifest["content_sha256"], approved)
+            self.assertEqual(manifest["term_count"], 25_002)
+
+    def test_discovered_snapshot_is_large_unique_tiered_and_provenanced(self):
+        data = json.loads((ROOT / "sources/wikidata-discovered.json").read_bytes())
+        self.assertEqual(len(data["entities"]), 25_000)
+        names = [item["canonical"].casefold() for item in data["entities"]]
+        self.assertEqual(len(names), len(set(names)))
+        self.assertTrue(all(item["qid"].startswith("Q") for item in data["entities"]))
+        self.assertTrue(all(item["tier"] in {"core", "extended", "discovered"} for item in data["entities"]))
+        self.assertTrue(all(item["inclusion_reason"].startswith(("wikidata:", "reviewed-seed;")) for item in data["entities"]))
+
+    def test_discovery_rejects_noise_and_downranks_ambiguity(self):
+        self.assertIsNone(safe_name("Template:Infobox organization"))
+        self.assertIsNone(safe_name("0123456789abcdef0123456789abcdef"))
+        self.assertIsNone(quality("Linear", 20))
+        self.assertEqual(quality("Linear", 40)[1:], ("core", True))
+
     def test_committed_snapshot_is_bounded_and_provenanced(self):
         data = json.loads((ROOT / "sources/wikidata-snapshot.json").read_bytes())
         self.assertLessEqual(data["request_budget"]["titles"], 300)

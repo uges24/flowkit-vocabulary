@@ -24,13 +24,13 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Refresh bounded Wikidata snapshot
-        run: python refresh.py
+      - name: Discover bounded Wikidata vocabulary
+        run: python discover.py --limit 25000 --per-type 8000 --seed sources/wikidata-snapshot.json --output sources/wikidata-discovered.json
       - name: Detect meaningful source change
         id: changed
         shell: bash
         run: |
-          current_hash=$(sha256sum sources/wikidata-snapshot.json | cut -d' ' -f1)
+          current_hash=$(sha256sum sources/wikidata-discovered.json | cut -d' ' -f1)
           published_hash=$(cat PUBLISHED_SNAPSHOT_SHA256)
           if [ "$current_hash" = "$published_hash" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -46,16 +46,23 @@ jobs:
         run: |
           current=$(cat CURRENT_VERSION)
           next=$((current + 1))
-          gh release download "v${current}" --pattern "global-v${current}.json.gz" --dir previous
-          python build_pack.py --snapshot sources/wikidata-snapshot.json --catalog sources/curated-titles.json --version "$next" --previous-pack "previous/global-v${current}.json.gz" --output-dir dist
+          if [ "$current" = "3" ]; then
+            python build_pack.py --snapshot sources/wikidata-discovered.json --catalog sources/curated-titles.json --version "$next" --output-dir dist
+            test "$(jq -r .content_sha256 dist/manifest.json)" = "$(cat APPROVED_BOOTSTRAP_CONTENT_SHA256)"
+          else
+            gh release download "v${current}" --pattern "global-v${current}.json.gz" --dir previous
+            python build_pack.py --snapshot sources/wikidata-discovered.json --catalog sources/curated-titles.json --version "$next" --previous-pack "previous/global-v${current}.json.gz" --output-dir dist
+          fi
           test -s dist/manifest.sig
           echo "$next" > NEXT_VERSION
       - name: Show reviewed source changes
         if: steps.changed.outputs.changed == 'true'
-        run: git diff --stat && git diff -- sources/wikidata-snapshot.json
+        run: git diff --stat && git diff -- sources/wikidata-discovered.json
       - name: Verify signed release artifacts
         if: steps.changed.outputs.changed == 'true'
-        run: python -m unittest -v test_publisher.py
+        run: |
+          python -m unittest -v test_publisher.py
+          python audit_negative_corpus.py sources/wikidata-discovered.json
       - name: Publish immutable release
         if: steps.changed.outputs.changed == 'true'
         env:
@@ -66,9 +73,9 @@ jobs:
           git diff --exit-code --check
           gh release create "v${next}" dist/manifest.json dist/manifest.sig "dist/global-v${next}.json.gz" --title "Vocabulary v${next}" --notes "Automated bounded Wikidata refresh. See the committed source snapshot for provenance."
           printf '%s\n' "$next" > CURRENT_VERSION
-          sha256sum sources/wikidata-snapshot.json | cut -d' ' -f1 > PUBLISHED_SNAPSHOT_SHA256
+          sha256sum sources/wikidata-discovered.json | cut -d' ' -f1 > PUBLISHED_SNAPSHOT_SHA256
           git config user.name "flowkit-vocabulary-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add CURRENT_VERSION PUBLISHED_SNAPSHOT_SHA256 sources/wikidata-snapshot.json
+          git add CURRENT_VERSION PUBLISHED_SNAPSHOT_SHA256 sources/wikidata-discovered.json
           git commit -m "data: publish vocabulary v${next}"
           git push origin HEAD:main

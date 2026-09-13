@@ -10,10 +10,14 @@ import os
 from collections import Counter
 from pathlib import Path
 
-MAX_TERMS = 5000
+MAX_TERMS = 60_000
 MAX_GROWTH_FACTOR = 1.75
 MAX_REMOVAL_FRACTION = 0.10
-ALLOWED_CATEGORIES = {"technology", "product", "company", "service"}
+ALLOWED_CATEGORIES = {
+    "technology", "company", "product", "service", "software", "developer_tool",
+    "framework", "library", "database", "programming_language", "ai_model",
+    "ai_product", "cloud_service", "public_organization",
+}
 
 
 def compact(value):
@@ -43,13 +47,20 @@ def main():
 
     terms = []
     for entity in snapshot["entities"]:
+        tier = entity.get("tier", "core")
+        tier_base = {"core": 9000, "extended": 7000, "discovered": 5000}.get(tier)
+        if tier_base is None:
+            raise SystemExit(f"invalid tier: {tier}")
         term = {
             "canonical": entity["canonical"],
             "aliases": entity["aliases"],
             "category": entity["category"],
             "confidence": 45 + min(30, entity["sitelinks"] // 5),
-            "rank": 5000 + min(5000, entity["sitelinks"] * 25),
+            "rank": tier_base + min(999, entity.get("relevance_score", entity["sitelinks"])),
             "source_ref": "wikidata:" + entity["qid"],
+            "tier": tier,
+            "relevance_reason": entity.get("inclusion_reason", f"wikidata:sitelinks={entity['sitelinks']}"),
+            "ambiguity_risk": entity.get("ambiguity_risk", "low"),
         }
         terms.append(term)
     terms.extend(catalog["flowkit_additions"])
@@ -65,7 +76,13 @@ def main():
             raise SystemExit(f"malformed term: {term}")
         if not term["source_ref"].startswith(("wikidata:Q", "flowkit-curated:")):
             raise SystemExit(f"unapproved provenance: {term['source_ref']}")
-        term["aliases"] = sorted({alias for alias in term["aliases"] if valid_text(alias)}, key=str.casefold)[:4]
+        term["aliases"] = sorted(
+            {alias for alias in term["aliases"] if valid_text(alias)},
+            key=lambda value: (value.casefold(), value),
+        )[:4]
+        term.setdefault("tier", "core")
+        term.setdefault("relevance_reason", "reviewed-curated-source")
+        term.setdefault("ambiguity_risk", "low")
     if not 1 <= len(terms) <= MAX_TERMS:
         raise SystemExit(f"term count outside bounds: {len(terms)}")
 
