@@ -14,6 +14,17 @@
   },
   "flowkit_additions": [
     {"canonical": "FlowKit", "aliases": ["Flow Kit"], "category": "product", "confidence": 50, "rank": 6500, "source_ref": "flowkit-curated:FlowKit"},
-    {"canonical": "Parakeet", "aliases": [], "category": "technology", "confidence": 45, "rank": 6000, "source_ref": "flowkit-curated:Parakeet-ASR"}
-  ]
+    {"canonical": "Parakeet", "aliases": [], "category": "technology", "confidence": 45, "rank": 6000, "source_ref": "flowkit-curated:Parakeet-ASR"},
+    {"canonical": "Supabase", "aliases": [], "category": "technology", "confidence": 50, "rank": 9500, "source_ref": "flowkit-curated:Supabase"},
+    {"canonical": ".NET", "aliases": ["dot net"], "category": "framework", "confidence": 50, "rank": 9500, "source_ref": "flowkit-curated:dotnet"},
+    {"canonical": "Next.js", "aliases": ["next js"], "category": "framework", "confidence": 50, "rank": 9500, "source_ref": "flowkit-curated:Next.js"},
+    {"canonical": "C++", "aliases": ["C plus plus"], "category": "programming_language", "confidence": 50, "rank": 9500, "source_ref": "flowkit-curated:C++"},
+    {"canonical": "C#", "aliases": ["C sharp"], "category": "programming_language", "confidence": 50, "rank": 9500, "source_ref": "flowkit-curated:C-sharp"},
+    {"canonical": "llama.cpp", "aliases": ["llama cpp"], "category": "technology", "confidence": 50, "rank": 9500, "source_ref": "flowkit-curated:llama.cpp"}
+  ],
+  "spoken_aliases": {
+    "Cloudflare": ["cloud flare"],
+    "Supabase": ["super base"],
+    "Vercel Inc.": ["ver sell"]
+  }
 }

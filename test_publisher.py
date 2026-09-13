@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from build_pack import identity_normalized, preferred_surface, spoken_punctuation_aliases
 from discover import quality, runtime_normalized, safe_alias, safe_name
 
 
@@ -14,6 +15,19 @@ ROOT = Path(__file__).parent
 
 
 class PublisherTests(unittest.TestCase):
+    def test_preferred_surface_and_spoken_punctuation_are_deterministic(self):
+        self.assertEqual(preferred_surface("Vercel Inc.", ["Vercel"]), "Vercel")
+        self.assertEqual(
+            preferred_surface("Hudson's Bay Company", ["The Bay"]),
+            "Hudson's Bay Company",
+        )
+        self.assertEqual(spoken_punctuation_aliases("ASP.NET"), ["ASP NET"])
+        self.assertEqual(spoken_punctuation_aliases("C++"), ["C plus plus"])
+        self.assertEqual(spoken_punctuation_aliases("C#"), ["C sharp"])
+        self.assertEqual(identity_normalized("C++"), "c plus plus")
+        self.assertEqual(identity_normalized("C#"), "c sharp")
+        self.assertEqual(identity_normalized(".NET"), "dot net")
+
     def test_approved_large_bootstrap_build_is_deterministic(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)
@@ -26,7 +40,7 @@ class PublisherTests(unittest.TestCase):
             manifest = json.loads((output / "manifest.json").read_bytes())
             approved = (ROOT / "APPROVED_BOOTSTRAP_CONTENT_SHA256").read_text().strip()
             self.assertEqual(manifest["content_sha256"], approved)
-            self.assertEqual(manifest["term_count"], 25_002)
+            self.assertEqual(manifest["term_count"], 25_008)
 
     def test_discovered_snapshot_is_large_unique_tiered_and_provenanced(self):
         data = json.loads((ROOT / "sources/wikidata-discovered.json").read_bytes())

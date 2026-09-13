@@ -5,17 +5,18 @@ real quality-filtered Wikidata entities; no duplicated or synthetic terms.
 
 | Terms | JSON | gzip | SQLite | Refresh | Startup | cold p95 | warm p95 |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 1,000 | 215,429 B | 21,136 B | 185,216 B | 50.63 ms | 3.555 ms | 0.0335 ms | 0.0422 ms |
-| 10,000 | 2,184,767 B | 188,544 B | 1,231,696 B | 90.17 ms | 3.781 ms | 0.0385 ms | 0.0473 ms |
-| 25,000 | 5,545,459 B | 457,820 B | 3,126,896 B | 206.63 ms | 4.825 ms | 0.0394 ms | 0.0434 ms |
+| 1,000 | 215,429 B | 21,136 B | 185,216 B | 56.99 ms | 3.987 ms | 0.0354 ms | 0.0403 ms |
+| 10,000 | 2,184,767 B | 188,544 B | 1,231,696 B | 96.84 ms | 4.945 ms | 0.0320 ms | 0.0411 ms |
+| 25,000 | 5,545,459 B | 457,820 B | 3,126,896 B | 206.93 ms | 4.615 ms | 0.0563 ms | 0.0444 ms |
 | 50,000 | not run | not run | not run | not run | not run | not run | not run |
 
 Only 26,512 unique candidates passed the current quality filters, so a real 50k
 benchmark was deliberately not fabricated. The deterministic production pack
-contains 25,002 terms including two FlowKit-curated additions, is 506,667 bytes
-compressed and 5,760,519 bytes unpacked. Aliases are restricted to normalized
+contains 25,008 terms including a small reviewed FlowKit-curated core, is 521,211 bytes
+compressed and 5,796,131 bytes unpacked. Aliases are restricted to normalized
 equivalents, short uppercase initialisms, and canonical corporate-name bases;
-the candidate currently retains 251 such aliases.
+the candidate currently retains 2,032 aliases, including deterministic spoken
+forms for punctuation-bearing technical names.
 
 The unchanged FlowKit Rust runtime fixture measured a 128-term active snapshot
 at 24,320 bytes owned heap. Its fixture-scale timings were refresh 349.895 ms,

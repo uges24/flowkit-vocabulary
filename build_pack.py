@@ -28,8 +28,34 @@ def normalized(value):
     return " ".join("".join(ch.lower() if ch.isalnum() else " " for ch in value).split())
 
 
+def identity_normalized(value):
+    value = value.strip()
+    if value.startswith("."):
+        value = "dot " + value[1:]
+    return normalized(value.replace("++", " plus plus ").replace("#", " sharp "))
+
+
 def valid_text(value):
     return isinstance(value, str) and 2 <= len(value) <= 80 and not any(ch in value for ch in "\r\n\t{}[]<>`$")
+
+
+CORPORATE_SUFFIXES = {"inc", "incorporated", "corp", "corporation", "company", "ltd", "limited", "llc", "plc", "ag"}
+
+
+def preferred_surface(canonical, aliases):
+    canonical_words = normalized(canonical).split()
+    for alias in aliases:
+        alias_words = normalized(alias).split()
+        if len(canonical_words) == len(alias_words) + 1 and canonical_words[:-1] == alias_words and canonical_words[-1] in CORPORATE_SUFFIXES:
+            return alias
+    return canonical
+
+
+def spoken_punctuation_aliases(canonical):
+    spoken = canonical.replace("++", " plus plus ").replace("#", " sharp ")
+    spoken = spoken.replace(".", " ").replace("-", " ")
+    spoken = " ".join(spoken.split())
+    return [spoken] if spoken != canonical else []
 
 
 def main():
@@ -46,14 +72,23 @@ def main():
     catalog = json.loads(args.catalog.read_bytes())
 
     terms = []
+    entity_names = {normalized(entity["canonical"]) for entity in snapshot["entities"]}
     for entity in snapshot["entities"]:
         tier = entity.get("tier", "core")
         tier_base = {"core": 9000, "extended": 7000, "discovered": 5000}.get(tier)
         if tier_base is None:
             raise SystemExit(f"invalid tier: {tier}")
+        display = preferred_surface(entity["canonical"], entity["aliases"])
+        if normalized(display) != normalized(entity["canonical"]) and normalized(display) in entity_names:
+            display = entity["canonical"]
+        aliases = list(entity["aliases"])
+        aliases.extend(catalog.get("spoken_aliases", {}).get(entity["canonical"], []))
+        if display != entity["canonical"]:
+            aliases.append(entity["canonical"])
+        aliases.extend(spoken_punctuation_aliases(display))
         term = {
-            "canonical": entity["canonical"],
-            "aliases": entity["aliases"],
+            "canonical": display,
+            "aliases": aliases,
             "category": entity["category"],
             "confidence": 45 + min(30, entity["sitelinks"] // 5),
             "rank": tier_base + min(999, entity.get("relevance_score", entity["sitelinks"])),
@@ -63,12 +98,16 @@ def main():
             "ambiguity_risk": entity.get("ambiguity_risk", "low"),
         }
         terms.append(term)
-    terms.extend(catalog["flowkit_additions"])
-    terms.sort(key=lambda item: (normalized(item["canonical"]), item["canonical"]))
+    for addition in catalog["flowkit_additions"]:
+        addition = dict(addition)
+        addition["aliases"] = list(addition["aliases"])
+        addition["aliases"].extend(catalog.get("spoken_aliases", {}).get(addition["canonical"], []))
+        terms.append(addition)
+    terms.sort(key=lambda item: (identity_normalized(item["canonical"]), item["canonical"]))
 
     seen = set()
     for term in terms:
-        key = normalized(term["canonical"])
+        key = identity_normalized(term["canonical"])
         if key in seen:
             raise SystemExit(f"duplicate normalized term: {term['canonical']}")
         seen.add(key)
@@ -89,7 +128,7 @@ def main():
     previous_names = set()
     if args.previous_pack and args.previous_pack.exists():
         with gzip.open(args.previous_pack, "rb") as handle:
-            previous_names = {normalized(item["canonical"]) for item in json.load(handle)["terms"]}
+            previous_names = {identity_normalized(item["canonical"]) for item in json.load(handle)["terms"]}
         removed = previous_names - seen
         if previous_names and len(removed) / len(previous_names) > MAX_REMOVAL_FRACTION:
             raise SystemExit(f"suspicious mass removal: {len(removed)}/{len(previous_names)}")
