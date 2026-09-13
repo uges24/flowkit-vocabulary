@@ -82,7 +82,7 @@ def main():
     for batch in batches(sorted(qids)):
         data = get_json(WIKIDATA_API, {
             "action": "wbgetentities", "format": "json", "formatversion": 2,
-            "props": "labels|aliases|sitelinks", "languages": "en", "sitefilter": "enwiki",
+            "props": "labels|aliases|sitelinks", "languages": "en",
             "ids": "|".join(batch),
         })
         for entity in data["entities"].values():
