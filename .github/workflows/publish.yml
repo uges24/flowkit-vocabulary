@@ -30,7 +30,9 @@ jobs:
         id: changed
         shell: bash
         run: |
-          if git diff --quiet -- sources/wikidata-snapshot.json; then
+          current_hash=$(sha256sum sources/wikidata-snapshot.json | cut -d' ' -f1)
+          published_hash=$(cat PUBLISHED_SNAPSHOT_SHA256)
+          if [ "$current_hash" = "$published_hash" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -64,8 +66,9 @@ jobs:
           git diff --exit-code --check
           gh release create "v${next}" dist/manifest.json dist/manifest.sig "dist/global-v${next}.json.gz" --title "Vocabulary v${next}" --notes "Automated bounded Wikidata refresh. See the committed source snapshot for provenance."
           printf '%s\n' "$next" > CURRENT_VERSION
+          sha256sum sources/wikidata-snapshot.json | cut -d' ' -f1 > PUBLISHED_SNAPSHOT_SHA256
           git config user.name "flowkit-vocabulary-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add CURRENT_VERSION sources/wikidata-snapshot.json
+          git add CURRENT_VERSION PUBLISHED_SNAPSHOT_SHA256 sources/wikidata-snapshot.json
           git commit -m "data: publish vocabulary v${next}"
           git push origin HEAD:main
