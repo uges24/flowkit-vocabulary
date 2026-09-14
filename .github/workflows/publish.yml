@@ -1,75 +1,73 @@
-name: Refresh and publish vocabulary
+name: Sign and publish frozen vocabulary
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 4 * * 1"
+    inputs:
+      publish:
+        description: Publish the validated frozen candidate as an immutable release
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
 
 concurrency:
-  group: vocabulary-publisher
+  group: vocabulary-release
   cancel-in-progress: false
 
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Discover bounded Wikidata vocabulary
-        run: python discover.py --limit 25000 --per-type 8000 --seed sources/wikidata-snapshot.json --output sources/wikidata-discovered.json
-      - name: Detect meaningful source change
-        id: changed
-        shell: bash
+      - name: Validate exact frozen V4 candidate
         run: |
-          current_hash=$(sha256sum sources/wikidata-discovered.json | cut -d' ' -f1)
-          published_hash=$(cat PUBLISHED_SNAPSHOT_SHA256)
-          if [ "$current_hash" = "$published_hash" ]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Build and validate next pack
-        if: steps.changed.outputs.changed == 'true'
+          python verify_release_candidate.py \
+            --candidate-dir release-candidates/v4 \
+            --version 4 \
+            --content-sha256 ce531d2112e8ed6f4a6fefc4e680c4a73fc72b51cfad2cd317c50f08c8b9e31d \
+            --artifact-sha256 c7f489d19846837ed3a443ba05a5c63ee9ebbb3e970fc322c3786f68b2892603 \
+            --terms 25008 \
+            --aliases 2079
+      - name: Sign exact frozen manifest
         env:
-          GH_TOKEN: ${{ github.token }}
           VOCABULARY_SIGNING_KEY: ${{ secrets.VOCABULARY_SIGNING_KEY }}
-        shell: bash
+        run: python sign_manifest.py --candidate-dir release-candidates/v4
+      - name: Verify production signature and hashes
         run: |
-          current=$(cat CURRENT_VERSION)
-          next=$((current + 1))
-          if [ "$current" = "3" ]; then
-            python build_pack.py --snapshot sources/wikidata-discovered.json --catalog sources/curated-titles.json --version "$next" --output-dir dist
-            test "$(jq -r .content_sha256 dist/manifest.json)" = "$(cat APPROVED_BOOTSTRAP_CONTENT_SHA256)"
-          else
-            gh release download "v${current}" --pattern "global-v${current}.json.gz" --dir previous
-            python build_pack.py --snapshot sources/wikidata-discovered.json --catalog sources/curated-titles.json --version "$next" --previous-pack "previous/global-v${current}.json.gz" --output-dir dist
-          fi
-          test -s dist/manifest.sig
-          echo "$next" > NEXT_VERSION
-      - name: Show reviewed source changes
-        if: steps.changed.outputs.changed == 'true'
-        run: git diff --stat && git diff -- sources/wikidata-discovered.json
-      - name: Verify signed release artifacts
-        if: steps.changed.outputs.changed == 'true'
-        run: |
-          python -m unittest -v test_publisher.py
-          python audit_negative_corpus.py sources/wikidata-discovered.json
-      - name: Publish immutable release
-        if: steps.changed.outputs.changed == 'true'
+          python verify_release_candidate.py \
+            --candidate-dir release-candidates/v4 \
+            --version 4 \
+            --content-sha256 ce531d2112e8ed6f4a6fefc4e680c4a73fc72b51cfad2cd317c50f08c8b9e31d \
+            --artifact-sha256 c7f489d19846837ed3a443ba05a5c63ee9ebbb3e970fc322c3786f68b2892603 \
+            --terms 25008 \
+            --aliases 2079 \
+            --signature release-candidates/v4/manifest.sig
+      - name: Preserve signed dry-run evidence
+        if: ${{ !inputs.publish }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-v4-dry-run
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            release-candidates/v4/manifest.json
+            release-candidates/v4/manifest.sig
+            release-candidates/v4/global-v4.json.gz
+      - name: Publish immutable V4 release
+        if: ${{ inputs.publish }}
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
         run: |
-          next=$(cat NEXT_VERSION)
-          git diff --exit-code --check
-          gh release create "v${next}" dist/manifest.json dist/manifest.sig "dist/global-v${next}.json.gz" --title "Vocabulary v${next}" --notes "Automated bounded Wikidata refresh. See the committed source snapshot for provenance."
-          echo "Release branch mode: defer repository bookkeeping and main push until live verification passes."
+          gh release create v4 \
+            release-candidates/v4/manifest.json \
+            release-candidates/v4/manifest.sig \
+            release-candidates/v4/global-v4.json.gz \
+            --title "Vocabulary v4" \
+            --notes "Accepted deterministic FlowKit global vocabulary V4."

@@ -15,6 +15,12 @@ ROOT = Path(__file__).parent
 
 
 class PublisherTests(unittest.TestCase):
+    def test_release_workflow_never_runs_discovery(self):
+        workflow = (ROOT / ".github/workflows/publish.yml").read_text(encoding="utf-8")
+        self.assertNotIn("discover.py", workflow)
+        self.assertNotIn("wikidata.org", workflow)
+        self.assertIn("release-candidates/v4", workflow)
+
     def test_preferred_surface_and_spoken_punctuation_are_deterministic(self):
         self.assertEqual(preferred_surface("Vercel Inc.", ["Vercel"]), "Vercel")
         self.assertEqual(

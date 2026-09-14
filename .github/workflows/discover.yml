@@ -1,0 +1,61 @@
+name: Discover vocabulary candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_version:
+        description: Version for a new, unaccepted candidate
+        required: true
+        default: "5"
+        type: string
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vocabulary-discovery
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Discover bounded Wikidata vocabulary
+        run: |
+          python discover.py \
+            --limit 25000 \
+            --per-type 8000 \
+            --seed sources/wikidata-snapshot.json \
+            --output candidate/wikidata-discovered.json
+      - name: Build unsigned future candidate
+        env:
+          CANDIDATE_VERSION: ${{ inputs.candidate_version || '5' }}
+        run: |
+          python build_pack.py \
+            --snapshot candidate/wikidata-discovered.json \
+            --catalog sources/curated-titles.json \
+            --version "$CANDIDATE_VERSION" \
+            --output-dir candidate/dist
+      - name: Validate discovery candidate
+        run: |
+          python -m unittest -v test_publisher.py
+          python audit_negative_corpus.py candidate/wikidata-discovered.json
+      - name: Upload candidate for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: vocabulary-candidate
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            candidate/wikidata-discovered.json
+            candidate/dist/manifest.json
+            candidate/dist/global-v*.json.gz
+
