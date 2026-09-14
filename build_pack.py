@@ -58,6 +58,17 @@ def spoken_punctuation_aliases(canonical):
     return [spoken] if spoken != canonical else []
 
 
+def compact_punctuation_alias(canonical):
+    """Return a conservative lookup-only form for punctuation-bearing names."""
+    if not any(ch in canonical for ch in ".-"):
+        return None
+    parts = normalized(canonical).split()
+    compacted = "".join(parts)
+    if len(parts) < 2 or len(compacted) < 6 or not compacted.isascii() or not compacted.isalnum():
+        return None
+    return compacted
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--snapshot", type=Path, required=True)
@@ -122,6 +133,28 @@ def main():
         term.setdefault("tier", "core")
         term.setdefault("relevance_reason", "reviewed-curated-source")
         term.setdefault("ambiguity_risk", "low")
+
+    # Compact punctuation aliases are exact lookup identities, not fuzzy hints.
+    # Only high-authority, low-risk public entries qualify, and an alias is kept
+    # only when every existing canonical/alias owner agrees on the same entity.
+    identity_owners = {}
+    for index, term in enumerate(terms):
+        for form in [term["canonical"], *term["aliases"]]:
+            identity_owners.setdefault(normalized(form), set()).add(index)
+    proposed = {}
+    for index, term in enumerate(terms):
+        compacted = compact_punctuation_alias(term["canonical"])
+        if compacted and term["rank"] >= 9000 and term["ambiguity_risk"] == "low":
+            proposed.setdefault(compacted, set()).add(index)
+    for compacted, owners in proposed.items():
+        owners |= identity_owners.get(compacted, set())
+        if len(owners) != 1:
+            continue
+        index = next(iter(owners))
+        aliases = terms[index]["aliases"]
+        if compacted not in {normalized(alias) for alias in aliases}:
+            aliases.append(compacted)
+            aliases.sort(key=lambda value: (value.casefold(), value))
     if not 1 <= len(terms) <= MAX_TERMS:
         raise SystemExit(f"term count outside bounds: {len(terms)}")
 

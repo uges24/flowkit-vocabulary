@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-from build_pack import identity_normalized, preferred_surface, spoken_punctuation_aliases
+from build_pack import compact_punctuation_alias, identity_normalized, preferred_surface, spoken_punctuation_aliases
 from discover import quality, runtime_normalized, safe_alias, safe_name
 
 
@@ -27,6 +27,16 @@ class PublisherTests(unittest.TestCase):
         self.assertEqual(identity_normalized("C++"), "c plus plus")
         self.assertEqual(identity_normalized("C#"), "c sharp")
         self.assertEqual(identity_normalized(".NET"), "dot net")
+
+    def test_compact_punctuation_aliases_are_bounded(self):
+        self.assertEqual(compact_punctuation_alias("ASP.NET"), "aspnet")
+        self.assertEqual(compact_punctuation_alias("Node.js"), "nodejs")
+        self.assertEqual(compact_punctuation_alias("Next.js"), "nextjs")
+        self.assertEqual(compact_punctuation_alias("llama.cpp"), "llamacpp")
+        self.assertEqual(compact_punctuation_alias("Objective-C"), "objectivec")
+        self.assertIsNone(compact_punctuation_alias("C++"))
+        self.assertIsNone(compact_punctuation_alias("C#"))
+        self.assertIsNone(compact_punctuation_alias(".NET"))
 
     def test_approved_large_bootstrap_build_is_deterministic(self):
         with tempfile.TemporaryDirectory() as directory:
