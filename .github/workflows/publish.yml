@@ -72,10 +72,4 @@ jobs:
           next=$(cat NEXT_VERSION)
           git diff --exit-code --check
           gh release create "v${next}" dist/manifest.json dist/manifest.sig "dist/global-v${next}.json.gz" --title "Vocabulary v${next}" --notes "Automated bounded Wikidata refresh. See the committed source snapshot for provenance."
-          printf '%s\n' "$next" > CURRENT_VERSION
-          sha256sum sources/wikidata-discovered.json | cut -d' ' -f1 > PUBLISHED_SNAPSHOT_SHA256
-          git config user.name "flowkit-vocabulary-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add CURRENT_VERSION PUBLISHED_SNAPSHOT_SHA256 sources/wikidata-discovered.json
-          git commit -m "data: publish vocabulary v${next}"
-          git push origin HEAD:main
+          echo "Release branch mode: defer repository bookkeeping and main push until live verification passes."
