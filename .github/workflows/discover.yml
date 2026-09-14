@@ -58,4 +58,3 @@ jobs:
             candidate/wikidata-discovered.json
             candidate/dist/manifest.json
             candidate/dist/global-v*.json.gz
-

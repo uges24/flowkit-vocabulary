@@ -51,3 +51,22 @@ review. Previous releases remain available for rollback.
 Authenticity uses a detached Ed25519 signature over exact manifest bytes. The
 private key exists only as the `VOCABULARY_SIGNING_KEY` Actions secret. Workflow
 permissions remain `contents: write`.
+
+Discovery and release are separate workflows. Discovery may query Wikidata and
+uploads an unsigned future candidate for review. Release accepts only a frozen,
+versioned candidate checked into `release-candidates/`; it performs no public-data
+discovery, validates exact hashes/schema/counts, signs the frozen manifest, and
+publishes those exact bytes.
+
+## Release record
+
+- V4 tag: `v4`
+- Published: 2026-09-14T02:49:18Z
+- Accepted publisher commit: `179373e8a33586d9c88b22ce4dc390df0a8a451f`
+- Content SHA-256: `ce531d2112e8ed6f4a6fefc4e680c4a73fc72b51cfad2cd317c50f08c8b9e31d`
+- Artifact SHA-256: `c7f489d19846837ed3a443ba05a5c63ee9ebbb3e970fc322c3786f68b2892603`
+- Catalog: 25,008 terms and 2,079 aliases
+- Production verification: signed dry run and public-byte verification passed;
+  isolated FlowKit V3 activated V4 from the production endpoint and retained V4
+  after restart.
+- Rollback release: `v3`
